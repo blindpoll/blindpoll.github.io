@@ -137,7 +137,7 @@ contract BlindPollBet {
 
     address public tokenAddress; // ERC20 contract
 
-    event PollCreated(uint256 pollId, address creator);
+    event PollCreated(uint256 pollId, address creator, uint32 startTime, uint32 duration, uint8 mode);
     event BetCreated(uint256 indexed pollId, address indexed bettor, uint256 index, uint256 amount);
     event PollPaid(uint256 indexed pollId, address indexed bettor, uint256 amount, uint8 payType);
     //paytype 0 => refund, 1 => win_reward, 2 => creator_commision, 3=> operator_commision
@@ -210,7 +210,7 @@ contract BlindPollBet {
         }
         
         gameInfo.totalPollCount ++;
-        emit PollCreated(pollId, msg.sender);
+        emit PollCreated(pollId, msg.sender, _startTime, _duration, _mode);
         return pollId;
     }
     
