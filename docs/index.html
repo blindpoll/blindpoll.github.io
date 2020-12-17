@@ -336,7 +336,7 @@ timer.addEventListener('targetAchieved', function (e) {
           myAddr = accounts[0];
           $("#accountAddr").html(getLink(myAddr));
           $("#btnConnect").css("display", "none");
-          getContract();
+          getContracts();
         })
         .catch((err) => {
           if (err.code === 4001) {
