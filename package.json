@@ -7,13 +7,20 @@
     "test": "test"
   },
   "scripts": {
+    "start": "node ./src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.5",
     "ethers": "^5.0.24",
-    "http-server": "^0.12.3"
+    "express": "^4.17.1",
+    "http-server": "^0.12.3",
+    "level-rocksdb": "^4.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.6"
   }
 }

@@ -1,3 +1,6 @@
+#rocksdb stoarge
+storage/
+
 # Logs
 logs
 *.log

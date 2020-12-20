@@ -10,31 +10,25 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css" >
   <!-- script src= "https://unpkg.com/micromodal/dist/micromodal.min.js"></script -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bignumber.js/8.0.2/bignumber.min.js" integrity="sha512-7UzDjRNKHpQnkh1Wf1l6i/OPINS9P2DDzTwQNX79JxfbInCXGpgI1RPb3ZD+uTP3O5X7Ke4e0+cxt2TxV7n0qQ==" crossorigin="anonymous"></script>
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha256-4+XzXVhsDmqanXGHaHvgh1gMQKX40OUvDEBTu8JcmNs=" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/easytimer@1.1.1/src/easytimer.min.js"></script>
    
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" />
 
-  <div id="countdownExample">
-    <div class="values"></div>
+  <div id="countdown1" style="display:block;">
+  
+
   </div>
+  <div id="countdown2" style="display:block;"></div>
 
 <script>
-var timer = new Timer();
-timer.start({countdown: true, startValues: {seconds: 30}});
 
-$('#countdownExample .values').html(timer.getTimeValues().toString());
 
-timer.addEventListener('secondsUpdated', function (e) {
-    $('#countdownExample .values').html(timer.getTimeValues().toString());
-});
 
-timer.addEventListener('targetAchieved', function (e) {
-    $('#countdownExample .values').html('KABOOM!!');
-});
 
-</script>
+  </script>
 
   <title>블라인드 여론 조사 베팅 게임</title>
   <style>
@@ -98,7 +92,7 @@ timer.addEventListener('targetAchieved', function (e) {
   <!--end modals-->
   <button onclick="toggleCreatePoll()">새 여론조사 만들기</button>  
   <div id="createPoll" style="display: none; width: 600px; background-color: #f7f7f7; padding: 20px;">
-    <form id="formPoll">
+    <form id="formCreatePoll">
       <fieldset>
         <label for="pollMode">게임 방식</label>
         <select id="pollMode" onchange="checkChoiceCount()">
@@ -136,13 +130,18 @@ timer.addEventListener('targetAchieved', function (e) {
   </div>
   <script>
 
-    $("#formPoll").submit(function(e){
+    $("#formCreatePoll").submit(function(e){
         return false;
     });  
 
-    function showMsg(msg) {
+    function showMsg(msg, hideClose) {
       $("#msgAlert").html(msg);
-      $("#msgAlert").modal();
+      if (hideClose) {
+        $("#msgAlert").modal({escapeClose: false, clickClose: false, showClose: false});    
+      } else {
+        $("#msgAlert").modal();  
+      }
+      
     }
 
     function toggleCreatePoll() {
@@ -166,7 +165,7 @@ timer.addEventListener('targetAchieved', function (e) {
     }
 
     function resetCreatePoll() {
-      $("#formPoll").trigger('reset')    
+      $("#formCreatPoll").trigger('reset')    
       $(".addedChoice").remove();
     }
 
@@ -247,7 +246,7 @@ timer.addEventListener('targetAchieved', function (e) {
     var pollContract;
     var tokenContract;
     var myAddr;
-    var chainId = 5; //Goerli testnet
+    var chainId = 42; //Goerli testnet
     var decDigits = 18; //token decimal digit
     var networkList = {
       1: "메인넷",
@@ -280,7 +279,8 @@ timer.addEventListener('targetAchieved', function (e) {
         $(".networkName").html(networkList[currentChainId]);
         if (currentChainId != chainId) {
           var wrongChainMsg = "이 게임은 오직 " + networkList[chainId] + "에서만 작동합니다.<br> Dapp 브라우저의 네트워크를 바꾸어 주세요.";
-          showMsg(wrongChainMsg);
+          showMsg(wrongChainMsg, true);
+          watchChainAccount();
           return
         }
         getAccount();
@@ -302,6 +302,15 @@ timer.addEventListener('targetAchieved', function (e) {
           getElem("btnConnect").style.display = "block";   
           console.log("No ethereum account is available!")
         }
+        web3.currentProvider.on("accountsChanged", (accounts) => {
+          startApp();
+          console.log(accounts);
+        });
+
+        web3.currentProvider.on("chainChanged", (chainId) => {
+          startApp();
+        });
+
       } catch(err) {
         console.log(err);}
     }
@@ -316,6 +325,11 @@ timer.addEventListener('targetAchieved', function (e) {
           pollAddr = "0x0852d74eFf8D92908a1ad36AD09ad82bfd655012";
           tokenAddr = "0x155d2A49BB97e6b2aFbD50Bba93191eC9DdE5613";
         }
+        else if (chainId==42) { 
+          pollAddr = "0x1775aa4c3287fc38638c9fc4e4e7b7272f1739df";
+          tokenAddr = "0x9dBd912c7b31E70ADc1E9808f4C818B275945423";
+        }
+
         else {
           console.log("not supported chain " + chainId);
           return;
@@ -325,9 +339,24 @@ timer.addEventListener('targetAchieved', function (e) {
         tokenContract = new web3.eth.Contract(tokenAbi, tokenAddr);
 
         $(".pollAddr").html(getLink(pollAddr));
-        updateAllbalances();
+        await updateAllbalances();
+        await getPolls();
+        watchChainAccount();
       } catch(err) {console.log(err);}
     }
+
+    function watchChainAccount() {
+      web3.currentProvider.on("accountsChanged", (accounts) => {
+        startApp();
+        showMsg("<p>어카운트가 변경되었습니다!</p><button onclick='location.reload()'>다시 로딩하기</button>");
+      });
+      web3.currentProvider.on("chainChanged", (chainId) => {
+        startApp();
+        showMsg("<p>네트워크(체인)가 변경되었습니다!</p><button onclick='location.reload()'>다시 로딩하기</button>");
+      });
+    }
+
+
 
     function connectAccount() {
       ethereum
@@ -336,7 +365,7 @@ timer.addEventListener('targetAchieved', function (e) {
           myAddr = accounts[0];
           $("#accountAddr").html(getLink(myAddr));
           $("#btnConnect").css("display", "none");
-          getContracts();
+          startApp();
         })
         .catch((err) => {
           if (err.code === 4001) {
@@ -467,50 +496,117 @@ timer.addEventListener('targetAchieved', function (e) {
     }
 
     function convertTimestamp(unix_timestamp) {
-      return new Date(unix_timestamp*1000);
+      return (new Date(unix_timestamp*1000)).toLocaleString();
     }
 
     async function updateAllbalances() {
       var weiEthBal = await web3.eth.getBalance(myAddr);
-      $(".ethBalance").html(toFixed(weiEthBal) + ' ETH');        
+      $(".ethBalance").html(toFixed(weiEthBal) + ' ETH');
       var rawTokenAmt = await tokenContract.methods.balanceOf(myAddr).call();
       $(".tokenBalance").html(toFixed(rawTokenAmt, 2) + ' DKEY');        
       var rawAllowed = await tokenContract.methods.allowance(myAddr, pollAddr).call();
       $(".tokenAllowed").html(toFixed(rawAllowed, 2) + ' DKEY');                
     }
 
-
     async function getPolls() {
       var startingBlock = await pollContract.methods.deployedBlock().call();
       pollContract.events.PollCreated({fromBlock: startingBlock})
-      .on("data", function(r){pollParser(r)})
-      .on("error", function(error, receipt){console.log(error);}) 
+      .on("data", async function(r) { 
+        let active = await pollParser(r) 
+        if (active) {
+          activateTimer('timer-'+active.pollId, active.timeLeft, endPoll);        
+        }
+        
+      })
+      .on("error", function(error, receipt){console.log(error);});
     }
 
     var pollHashes = [];
 
-    function pollParser(r){
+    async function pollParser(r){
       if (pollHashes.includes(r.transactionHash)) { return }
       commentHashes.push(r.transactionHash);
 
-      var cnow = Date.now()/1000;
-      var start = r.returnValues.startTime;
-      var end = start + r.returnValues.duration;
-      alert(r.returnValues.startTime);
-
-      if (start <= cnow && end > cnow) { 
-        alert(r);
-        $("#activePolls").prepend($("p").html(r));
-      } else if (end <= cnow) {
-        alert(r);
-        $("finishedPolls").prepend($("p").html(r));
-      } else {
-        alert(r);
-        $("comingPolls").prepend($("p").html(r));
-
+      var now = parseInt(Date.now()/1000);
+      var start = parseInt(r.returnValues.startTime);
+      var end = start + parseInt(r.returnValues.duration);
+      var pollId = r.returnValues.pollId;
+      var timeLeft = end - now;
+      if (start <= now && end > now) { //active polls accepting new bets
+        var poll = await pollContract.methods.polls(pollId).call();
+        if (!poll.isTerminated) {
+          var pollDetail = await pollContract.methods.pollDetails(pollId).call();
+          var pollChoices = await pollContract.methods.getPollChoices(pollId).call();
+          var pollDiv = makePoll(pollId, poll, pollDetail, pollChoices);
+          $("#activePolls").prepend(pollDiv);
+          return { pollId, timeLeft };
+        }
+      } else if (end <= now) { //finishied polls
+        
+        $("finishedPolls").prepend($("p").html(r.startTime));
+      } else { //comming pools
+        $("comingPolls").prepend($("p").html(r.startTime));
       }
     }
-    
+
+
+    function makePoll(pollId, poll, pollDetail, pollChoices) {
+      var pollD = $(`<div id="poll-${pollId}" class="poll"></div>`);
+      var headDiv = $(`<div class="pollHead"></div>`);
+      var choicesDiv = $(`<div class="pollChoices"></div>`);
+      var betDiv = $(`<div class="pollBet"></div>`);
+
+      headDiv.append($(`<div class="question">${poll.question}</div>`));
+      var pollMode;
+      if (poll.mode == 0) { pollMode = "High"; }
+      else if (poll.mode == 1) { pollMode = "Low"; }
+      else { pollMode = "HighLow"; }
+      var endTime = parseInt(poll.startTime) + parseInt(poll.duration);
+      headDiv.append($(`<span class="pollId"><span class="pollKey">PollID: </span><span>${pollId}</span></span>`));
+      headDiv.append($(`<span class="pollMode"><span class="pollKey">게임모드: </span><span>${pollMode}</span></span>`));
+      headDiv.append($(`<span class="pollEndTime"><span class="pollKey">종료시간: </span><span>${convertTimestamp(endTime)}</span></span>`));
+      headDiv.append($(`<span class="pollTimeLeft"><span class="pollKey">남은시간: </span><span id="timer-${pollId}"></span></span>`));
+      headDiv.append($(`<span class="pollBetCount"><span class="pollKey">베팅수: </span><span>${pollDetail.betCount}</span></span>`));
+      headDiv.append($(`<span class="pollBetCount"><span class="pollKey">총베팅액: </span><span>${pollDetail.totalAmount}</span></span>`));
+      pollD.append(headDiv);
+      let choicesHtml = `<ul style="list-style: none;">`;
+      for (let i=0; i < pollChoices.length; i++) {
+        choicesHtml += `<li><input type="radio" name="choices-${pollId}" value="${i+1}"> ${i+1}. ${pollChoices[i]}</li>`;
+      }
+      choicesHtml += "</ul>";
+      choicesDiv.append(choicesHtml);
+      pollD.append(choicesDiv);
+
+      betDiv.append($(`<span>베팅 dKey 토큰수</span> <input type="text" value="0" style="width:150px; text-align: right;"> <button class="button" onclick="" >베팅하기</button>`));
+
+      pollD.append(betDiv);
+      return pollD;
+    }
+
+    function activateTimer(targetId, secs, callback) {
+      let timer = new Timer();
+      let target = $(`#${targetId}`);
+      timer.start({countdown: true, startValues: {seconds: secs}});
+      target.html(timer.getTimeValues().toString());
+      timer.addEventListener('secondsUpdated', function (e) {
+        target.html(timer.getTimeValues().toString());
+      });
+      timer.addEventListener('targetAchieved', function (e) {
+        target.html('This poll ended!');
+        if (callback) {
+          callback(target);
+        }
+      });
+    }
+    function endPoll(poll) {
+      //remove bet feature
+    } 
+
+    function getChoiceHash(pollId, choice, addr) {
+      
+      return 
+    }
+   
   </script>
 </body>
 </html>
