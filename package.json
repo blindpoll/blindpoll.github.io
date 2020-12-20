@@ -8,12 +8,15 @@
   },
   "scripts": {
     "start": "node ./src/index.js",
+    "live": "nodemon ./src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "assert": "^2.0.0",
+    "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "ethers": "^5.0.24",
     "express": "^4.17.1",

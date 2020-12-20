@@ -600,13 +600,33 @@
     }
     function endPoll(poll) {
       //remove bet feature
-    } 
-
-    function getChoiceHash(pollId, choice, addr) {
-      
-      return 
     }
-   
+    
+    async function apiPost(host, resource, data, accessToken) {
+      const headers = { 'Content-Type': 'application/json',
+                      'Accept': 'application/json' 
+                      }
+      if (accessToken) {
+        headers['Authorization'] = 'Bearer ' + accessToken
+      }
+      const url = host + resource;
+      return await fetch(url, { method: 'post', headers: headers, 
+        body: JSON.stringify(data) })
+    }
+
+    async function getChoiceHash(contract, pollId, address, choice) {
+      //const api = 'https://poll.atomrigs.io/api/v1/'
+      const api = 'http://localhost:3000/api/v1/'
+      const resource = 'getHash'
+      data = { contract, pollId, address, choice}
+      res = await apiPost(api, resource, data)
+      json = await res.json()
+      if (res.status == 200) {
+        return json.hash
+      } else {
+        return json.err
+      }
+    }
   </script>
 </body>
 </html>
