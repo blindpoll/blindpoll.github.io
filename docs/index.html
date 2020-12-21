@@ -83,7 +83,7 @@
       <li style="width:350px;"><b>현재 DKEY 허용:</b> <span class="tokenAllowed" style="float:right;"></span></li>
       <li><b> DKEY 허용액 설정:</b>
           <input type="text" id="newTokenAllowAmt" value="0", style="width:150px; text-align: right;">
-          <button class="button" onclick="return setTokenAllow()">보내기</button>
+          <button class="button" onclick="return setTokenAllow()">설정하기</button>
       </li>
     </ul>
     <div id="setTokenAllowTx"></div>
@@ -256,6 +256,7 @@
       42: "Kovan 테스트넷",
       1337: "Gnache 로컬넷"
     };
+    var pollHashes = [];
 
     window.addEventListener("load", function() {
 
@@ -326,7 +327,7 @@
           tokenAddr = "0x155d2A49BB97e6b2aFbD50Bba93191eC9DdE5613";
         }
         else if (chainId==42) { 
-          pollAddr = "0x1775aa4c3287fc38638c9fc4e4e7b7272f1739df";
+          pollAddr = "0x5f02D1c39AD4e97C5AEe597282A86819Da4Fc088";
           tokenAddr = "0x9dBd912c7b31E70ADc1E9808f4C818B275945423";
         }
 
@@ -341,6 +342,7 @@
         $(".pollAddr").html(getLink(pollAddr));
         await updateAllbalances();
         await getPolls();
+        await getNewBets();
         watchChainAccount();
       } catch(err) {console.log(err);}
     }
@@ -394,49 +396,6 @@
       .on("error", (error) => {console.log(error)})
     }
 
-    async function getComments() {
-      var numComments = await declaration.methods.numComments().call()
-      var startingBlock = await declaration.methods.blockByCounter(1).call();
-      getElem("numComments").innerHTML = numComments;
-
-      if (numComments > maxComments) {
-        startingBlock = await declaration.methods.blockByCounter(numComments-maxComments).call();
-      }
-      declaration.events.Commented({fromBlock: startingBlock})
-      .on("data", function(r){commentEventParser(r)})
-      .on("error", function(error, receipt){console.log(error);}) 
-    }
-
-    var commentHashes = [];
-    function commentEventParser(r){
-      if (commentHashes.includes(r.transactionHash)) {return}
-      commentHashes.push(r.transactionHash);
-
-      var allList = getElem("allComments");
-      var newItem = document.createElement("li");
-      var txLink = document.createElement("span");
-      txLink.innerHTML = "tx: " + getLink(r.transactionHash);
-      newItem.appendChild(txLink);
-      var newPre = document.createElement("pre");
-      newPre.innerText = "작성자: " + r.returnValues.sender + "... on " + convertTimestamp(r.returnValues.timestamp) + "\n\n" + r.returnValues.comment;
-      getElem("numComments").innerHTML = r.returnValues.count;
-
-      newItem.appendChild(newPre);
-      if (r.returnValues.sender == myAddr) {
-        var myList = getElem("myComments");
-        var newMyItem = newItem.cloneNode(true);
-        if (myList.length == 0) {
-          myList.appendChild(newMyItem);
-        } else {
-          myList.insertBefore(newMyItem, myList.childNodes[0]);
-        }
-      }
-      if (allList.length == 0) {
-        allList.appendChild(newItem);
-      } else {
-        allList.insertBefore(newItem, allList.childNodes[0]);
-      }
-    }
 
     async function getCommentsByAddr() {
       var addr = getElem("targetAddr").value;
@@ -501,17 +460,18 @@
 
     async function updateAllbalances() {
       var weiEthBal = await web3.eth.getBalance(myAddr);
-      $(".ethBalance").html(toFixed(weiEthBal) + ' ETH');
+      $(".ethBalance").html(toFixed(weiEthBal) + ' ETH').valAnimate();
       var rawTokenAmt = await tokenContract.methods.balanceOf(myAddr).call();
-      $(".tokenBalance").html(toFixed(rawTokenAmt, 2) + ' DKEY');        
+      $(".tokenBalance").html(toFixed(rawTokenAmt, 2) + ' DKEY').valAnimate();        
       var rawAllowed = await tokenContract.methods.allowance(myAddr, pollAddr).call();
-      $(".tokenAllowed").html(toFixed(rawAllowed, 2) + ' DKEY');                
+      $(".tokenAllowed").html(toFixed(rawAllowed, 2) + ' DKEY').valAnimate();                
     }
 
     async function getPolls() {
       var startingBlock = await pollContract.methods.deployedBlock().call();
       pollContract.events.PollCreated({fromBlock: startingBlock})
       .on("data", async function(r) { 
+        
         let active = await pollParser(r) 
         if (active) {
           activateTimer('timer-'+active.pollId, active.timeLeft, endPoll);        
@@ -521,11 +481,9 @@
       .on("error", function(error, receipt){console.log(error);});
     }
 
-    var pollHashes = [];
-
     async function pollParser(r){
       if (pollHashes.includes(r.transactionHash)) { return }
-      commentHashes.push(r.transactionHash);
+      pollHashes.push(r.transactionHash);
 
       var now = parseInt(Date.now()/1000);
       var start = parseInt(r.returnValues.startTime);
@@ -566,8 +524,8 @@
       headDiv.append($(`<span class="pollMode"><span class="pollKey">게임모드: </span><span>${pollMode}</span></span>`));
       headDiv.append($(`<span class="pollEndTime"><span class="pollKey">종료시간: </span><span>${convertTimestamp(endTime)}</span></span>`));
       headDiv.append($(`<span class="pollTimeLeft"><span class="pollKey">남은시간: </span><span id="timer-${pollId}"></span></span>`));
-      headDiv.append($(`<span class="pollBetCount"><span class="pollKey">베팅수: </span><span>${pollDetail.betCount}</span></span>`));
-      headDiv.append($(`<span class="pollBetCount"><span class="pollKey">총베팅액: </span><span>${pollDetail.totalAmount}</span></span>`));
+      headDiv.append($(`<span class="pollBetCount"><span class="pollKey">베팅수: </span><span id="pollBetCount-${pollId}">${pollDetail.betCount}</span></span>`));
+      headDiv.append($(`<span class="pollBetAmount"><span class="pollKey">총베팅액: </span><span id="pollBetAmount-${pollId}">${pollDetail.totalAmount}</span></span>`));
       pollD.append(headDiv);
       let choicesHtml = `<ul style="list-style: none;">`;
       for (let i=0; i < pollChoices.length; i++) {
@@ -577,10 +535,31 @@
       choicesDiv.append(choicesHtml);
       pollD.append(choicesDiv);
 
-      betDiv.append($(`<span>베팅 dKey 토큰수</span> <input type="text" value="0" style="width:150px; text-align: right;"> <button class="button" onclick="" >베팅하기</button>`));
+      betDiv.append($(`<span>베팅 dKey 토큰수</span> <input type="text" id="betAmount-${pollId}" placeholder="0" style="width:150px; text-align: right;"> \
+                       <button class="button" onclick="pollBet('${pollId}')" >베팅하기</button>`));
+      betDiv.append($(`<div id="txResult-${pollId}"></div>`));
 
       pollD.append(betDiv);
       return pollD;
+    }
+
+    async function pollBet(pollId){
+      const betAmount = $(`#betAmount-${pollId}`).val()
+      const choice = $(`input[name='choices-${pollId}']:checked`).val()
+      const choiceHash = await getChoiceHash(pollAddr, pollId, myAddr, choice) 
+      var gas = await pollContract.methods.pollBet(pollId, choiceHash, betAmount).estimateGas({from: myAddr});
+
+
+      pollContract.methods.pollBet(pollId, choiceHash, betAmount).send({from: myAddr, gas: gas})
+      .on('transactionHash', (txid) => {
+        $(`#txResult-${pollId}`).html(`트랜잭션 정보 txid: ${getLink(txid)} <span id="pending-${pollId}" style="color:red;"><img src="spin.gif">블록체인 컨펌 대기중...</span>`);    
+      })
+      .once('receipt', (receipt) => {
+        $(`#pending-${pollId}`).html(`<br>(기록된 블록: ${receipt.blockNumber})`);
+        $(`#pending-${pollId}`).css('color', 'green');
+        updateAllbalances();        
+      })
+      .on('error', (error) => {console.log(error)})
     }
 
     function activateTimer(targetId, secs, callback) {
@@ -615,8 +594,8 @@
     }
 
     async function getChoiceHash(contract, pollId, address, choice) {
-      //const api = 'https://poll.atomrigs.io/api/v1/'
-      const api = 'http://localhost:3000/api/v1/'
+      const api = 'https://blindpoll.atomrigs.io/api/v1/'
+      //const api = 'http://localhost:3000/api/v1/'
       const resource = 'getHash'
       data = { contract, pollId, address, choice}
       res = await apiPost(api, resource, data)
@@ -627,6 +606,28 @@
         return json.err
       }
     }
+
+    async function getNewBets() {
+      const currentBlock = await web3.eth.getBlockNumber();
+      pollContract.events.BetCreated({fromBlock: currentBlock})
+      .on("data", async function(r) { 
+        const pollId = r.returnValues.pollId;
+        const pollBetCount = parseInt(r.returnValues.index) + 1;
+        const pollBetAmount = parseInt($(`#pollBetAmount-${pollId}`).html()) + parseInt(r.returnValues.amount);
+        $(`#pollBetCount-${pollId}`).html(pollBetCount).valAnimate();
+        $(`#pollBetAmount-${pollId}`).html(pollBetAmount).valAnimate();
+      })
+      .on("error", function(error, receipt){console.log(error);});
+    }
+
+    function changeAnimate(ele) {
+      console.log(ele);
+    }
+
+    jQuery.fn.valAnimate = function() {
+      this.fadeOut().fadeIn('slow');
+    }
+
   </script>
 </body>
 </html>
