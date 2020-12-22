@@ -3,7 +3,7 @@
 // @version 1.0
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <=0.8.0;
+pragma solidity >=0.6.0 <0.8.0;
 pragma abicoder v2;
 
 library SafeMath {
@@ -137,8 +137,8 @@ contract BlindPollBet {
 
     address public tokenAddress; // ERC20 contract
 
-    event PollCreated(uint256 pollId, address creator, uint32 startTime, uint32 duration, uint8 mode);
-    event BetCreated(uint256 indexed pollId, address indexed bettor, uint256 index, uint256 amount);
+    event PollCreated(uint256 pollId, address indexed creator, uint32 startTime, uint32 duration, uint8 mode);
+    event BetCreated(uint256 indexed pollId, address indexed bettor, uint256 index, uint256 amount, uint32 totalBetCount, uint32 totalBetAmount);
     event PollPaid(uint256 indexed pollId, address indexed bettor, uint256 amount, uint8 payType);
     //paytype 0 => refund, 1 => win_reward, 2 => creator_commision, 3=> operator_commision
 
@@ -150,7 +150,7 @@ contract BlindPollBet {
     constructor() {
         deployedBlock = block.number;
         operator = msg.sender;
-        tokenAddress = 0x155d2A49BB97e6b2aFbD50Bba93191eC9DdE5613;
+        tokenAddress = 0x9dBd912c7b31E70ADc1E9808f4C818B275945423;
     
         gameRule = GameRule({
             operatorCommission: 5, // 5% 
@@ -280,7 +280,7 @@ contract BlindPollBet {
         gameInfo.totalBetCount ++;
         gameInfo.totalBetAmount += _betAmount;
         
-        emit BetCreated(_pollId, msg.sender, bets[_pollId].length-1, _betAmount);
+        emit BetCreated(_pollId, msg.sender, bets[_pollId].length-1, _betAmount, gameInfo.totalBetCount, gameInfo.totalBetAmount);
     }
     
     function getHash(uint8 _choice, address _addr, bytes32 _secreteSalt) 
@@ -419,12 +419,17 @@ contract BlindPollBet {
                 emit PollPaid(_pollId, bet.bettor, paidAmount, 1);
             }
         }
-        require(token.transfer(poll.creator, decimal.mul(c.creatorAmount)));
-        emit PollPaid(_pollId, poll.creator, c.creatorAmount, 2);
-        c.totalPaidAmount = c.totalPaidAmount.add(c.creatorAmount);
+        if (c.creatorAmount > 0) {
+            require(token.transfer(poll.creator, decimal.mul(c.creatorAmount)));    
+            emit PollPaid(_pollId, poll.creator, c.creatorAmount, 2);
+            c.totalPaidAmount = c.totalPaidAmount.add(c.creatorAmount);
+        }
         c.operatorAmount = pollDetail.totalAmount.sub(c.totalPaidAmount);
-        require(token.transfer(operator, decimal.mul(c.operatorAmount)));
-        emit PollPaid(_pollId, operator, c.operatorAmount, 3);
+        if (c.operatorAmount > 0) {
+            require(token.transfer(operator, decimal.mul(c.operatorAmount)));
+            emit PollPaid(_pollId, operator, c.operatorAmount, 3);
+                
+        }
         pollDetail.isPaid = true;
         return true;
     }

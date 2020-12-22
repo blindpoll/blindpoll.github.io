@@ -18,10 +18,15 @@
     "assert": "^2.0.0",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
     "ethers": "^5.0.24",
     "express": "^4.17.1",
+    "find-config": "^1.0.0",
     "http-server": "^0.12.3",
-    "level-rocksdb": "^4.0.0"
+    "jose": "^2.0.3",
+    "level-rocksdb": "^4.0.0",
+    "node-lmdb": "^0.9.4",
+    "update-dotenv": "^1.1.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.6"
