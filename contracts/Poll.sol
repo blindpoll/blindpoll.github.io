@@ -1,9 +1,9 @@
 // @title HighLow Poll Game
 // @author Atomrigs Lab
-// @version 1.0
+// @version 1.0.2
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0 <0.8.0;
+pragma solidity >=0.7.0 <0.8.0;
 pragma abicoder v2;
 
 library SafeMath {
@@ -240,7 +240,7 @@ contract BlindPollBet {
     }
     
     function isFinished(uint256 _pollId) public view returns (bool) { 
-        return getStatus(_pollId) == Status.finished; 
+        return getStatus(_pollId) >= Status.finished; 
     }    
     
     function isActive(uint256 _pollId) public view returns (bool) { 
@@ -248,7 +248,7 @@ contract BlindPollBet {
     }
     
     function isPaid(uint256 _pollId) public view returns (bool) { 
-        return getStatus(_pollId) == Status.paid; 
+        return getStatus(_pollId) >= Status.paid; 
     }
     
     function getPollCount() public view returns (uint256) {
@@ -393,6 +393,7 @@ contract BlindPollBet {
 
         if (totalWinChoiceAmount == 0) { //refund
             require(terminatePoll(_pollId));
+            return true;
         }
 
         Calc memory c = Calc({

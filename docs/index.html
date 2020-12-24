@@ -197,16 +197,16 @@
       var gas = await pollContract.methods.createPoll(start, duration, question, choices, mode).estimateGas({from: myAddr});
       pollContract.methods.createPoll(start, duration, question, choices, mode).send({from: myAddr, gas: gas})
       .on('transactionHash', (txid) => {
-        $("#createPollTx").html('트랜잭션 정보 txid: ' + getLink(txid) + '<span id="pending" style="color:red;"><img src="spin.gif">블록체인 컨펌 대기중...</span>');    
+        $("#createPollTx").html(`트랜잭션 정보 txid: ${getLink(txid)} <span id="pending-pollTx" style="color:red;"><img src="spin.gif">블록체인 컨펌 대기중...</span>`);    
       })
       .once('receipt', (receipt) => {
-        $('#pending').html('<br>(기록된 블록: ' + receipt.blockNumber + ')');
-        $('#pending').css('color', 'green');
+        $('#pending-pollTx').html('<br>(기록된 블록: ' + receipt.blockNumber + ')');
+        $('#pending-pollTx').css('color', 'green');
         updateAllbalances();        
       })
       .on('error', (error) => {
-        $('#pending').html('(트랜잭션 실행 실패)');
-        $('#pending').css('color', 'red');
+        $('#pending-pollTx').html('(트랜잭션 실행 실패)');
+        $('#pending-pollTx').css('color', 'red');
       })
     }
   </script>
@@ -321,8 +321,8 @@
           tokenAddr = "0x155d2A49BB97e6b2aFbD50Bba93191eC9DdE5613";
         }
         else if (chainId==42) { 
-          //pollAddr = "0x9Af7eC6B510794802bb19a65a7FF24e0B9350828";
-          pollAddr = "0xA43455c00D5ABaED8d257451d73c40718E8b48BD"; //test
+          pollAddr = "0xd6e60E0FBBE52a3C4317cD118dc0Ca8cEfCeA5BC"; //test
+          //pollAddr = "0x0b9f85A3a6700a25290FDBc0F1d048d7Ac1DA3D8"; 
           tokenAddr = "0x9dBd912c7b31E70ADc1E9808f4C818B275945423";
         }
 
@@ -516,7 +516,7 @@
       var errorMsg = "";
       if (betAmount < 1) errorMsg += "<li>최소 베팅금액은 1 DKEY 입니다. </li>";
       if (betAmount > 10000) errorMsg += "<li>1회 최대 베팅금액은 10000 DKEY 입니다. </li>";
-      if (betAmount > parseInt(tokenAllowed)) { alert(parseInt(betAmount)); errorMsg += "<li>사용할 수 있도록 허용된 DKEY 수가 부족합니다. 허용액을 늘려주세요.</li>"}
+      if (betAmount > parseInt(tokenAllowed)) { errorMsg += "<li>사용할 수 있도록 허용된 DKEY 수가 부족합니다. 허용액을 늘려주세요.</li>"}
       if (!choice) errorMsg += "<li>답변 중 하나를 선택해야 됩니다. </li>";
       if (errorMsg) {
         showMsg("<h5>베팅 오류:</h5>" + errorMsg);
@@ -550,7 +550,7 @@
         target.html(timer.getTimeValues().toString());
       });
       timer.addEventListener('targetAchieved', function (e) {
-        target.html('베팅종료');
+        target.html('종료');
         if (callback) {
           callback(target);
         }
