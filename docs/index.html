@@ -573,8 +573,8 @@
     }
 
     async function getChoiceHash(contract, pollId, address, choice) {
-      //const api = 'https://blindpoll.atomrigs.io/api/v1/'
-      const api = 'http://localhost:3000/api/v1/'
+      const api = 'https://blindpoll.atomrigs.io/api/v1/'
+      //const api = 'http://localhost:3000/api/v1/'
       const resource = 'getHash'
       data = { contract, pollId, address, choice}
       res = await apiPost(api, resource, data)
