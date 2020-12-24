@@ -141,7 +141,8 @@ contract BlindPollBet {
     event BetCreated(uint256 indexed pollId, address indexed bettor, uint256 index, uint256 amount, uint32 totalBetCount, uint32 totalBetAmount);
     event PollPaid(uint256 indexed pollId, address indexed bettor, uint256 amount, uint8 payType);
     //paytype 0 => refund, 1 => win_reward, 2 => creator_commision, 3=> operator_commision
-
+    event PollRevealed(uint256 indexed pollId);
+    
     modifier onlyOperator() {
         require(msg.sender == operator);
         _;
@@ -157,8 +158,8 @@ contract BlindPollBet {
             creatorCommission: 5,
             maxChoiceCount: 10,
             maxBetCount: 100,
-            minBetAmount: 100, // unit is dkey
-            maxBetAmount: 100000 // unit is dkey
+            minBetAmount: 1, // unit is dkey
+            maxBetAmount: 1000 // unit is dkey
         });
         
         gameInfo = GameInfo({
@@ -431,6 +432,7 @@ contract BlindPollBet {
                 
         }
         pollDetail.isPaid = true;
+        emit PollRevealed(_pollId);
         return true;
     }
     
@@ -460,12 +462,12 @@ contract BlindPollBet {
         return true;
     }    
     
-    function setNewPollAllow(bool _val) public onlyOperator() returns (bool){
+    function setNewPollAllow(bool _val) public onlyOperator() returns (bool) {
         newPollAllow = _val;
         return true;
     }
 
-    function withdrawTo(address _toAddr, uint256 _amount) public onlyOperator() returns (bool){
+    function withdrawTo(address _toAddr, uint256 _amount) public onlyOperator() returns (bool) {
         for(uint i = 0; i < polls.length; i++) {
             require(isPaid(i));
         }

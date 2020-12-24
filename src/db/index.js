@@ -3,13 +3,12 @@ const lmdb = require('node-lmdb')
 const storage = require('find-config')('storage')
 const dbName = "poll"
 if (!fs.existsSync(storage)){
-    fs.mkdirSync(storage);
+    fs.mkdirSync('./storage');
 }
 
 //const level = require('level-rocksdb')
 //const storage = __dirname + '/../../storage/'
 //const db = level(storage, { valueEncoding: 'json' })
-
 
 class db {
   static get(key) {
