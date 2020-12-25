@@ -598,7 +598,12 @@
       }
 
       const choiceHash = await getChoiceHash(pollAddr, pollId, myAddr, choice) 
-      var gas = await pollContract.methods.pollBet(pollId, choiceHash, betAmount).estimateGas({from: myAddr});
+      try {
+        var gas = await pollContract.methods.pollBet(pollId, choiceHash, betAmount).estimateGas({from: myAddr});
+      } catch(err) {
+        showMsg("<h5>베팅 오류:</h5>" + "이미 종료된 설문이거나 다른 에러가 있습니다.");
+        return false;
+      }
 
       pollContract.methods.pollBet(pollId, choiceHash, betAmount).send({from: myAddr, gas: gas})
       .on('transactionHash', (txid) => {
