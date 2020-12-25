@@ -38,12 +38,8 @@
       opacity: 1; /* Firefox */
     }
     li {list-style-type: none;}
-    .topMenu li {
-      display: inline;
-      margin: 0;
-      padding-right: 15px;
-    }
-    #topState {text-align: right;}
+    .topMenu li { display: inline; margin: 0; padding-right: 15px; }
+    #topState { text-align: right; }
     #accountBal {border-radius: 20px; background: #f0f0f5; padding: 20px; margin-right: 15px; padding-bottom: 0px;}
     #gameSum { border-radius: 20px; background: #f0f0f5; padding: 15px; padding-bottom: 0px; }
     #network {float: left;}
@@ -51,7 +47,7 @@
     .ui-tabs .ui-tabs-nav li {border-top-left-radius: 15px; border-top-right-radius: 15px; }
     .ui-state-active, .ui-state-active, .ui-state-active {background-color: #4359e8; }
     .question {font-size: 130%;}
-    .poll {background-color: #eff5fc; padding: 1rem; border-radius: 20px; margin-bottom: 1rem;}
+    .poll {background-color: #eff5fc; padding: 2rem; border-radius: 20px; margin-bottom: 2rem;}
     .ui-widget.ui-widget-content {border: none;}
     .pollHead span {padding-right: 0.5rem;}
     .pollBetCount {display: inline-block;}
@@ -76,7 +72,7 @@
     <li>게임 컨트랙: <span class="pollAddr"></span></li>
     <li>내 어카운트: <span class="accountAddr"></span></li>
   </ul>  
-  <div class="container">
+  <div class="container" id="cid">
     <div class="row">
 
       <div class="column column-58" id="accountBal">
@@ -128,16 +124,17 @@
       <li><a href="#tabs-3">새 설문 만들기</a></li>
       <li><a href="#tabs-4">내 기록</a></li>
       <li><a href="#tabs-5">DKEY 관리</a></li>
+      <li><a href="#tabs-6">Q&A</a></li>
     </ul>
-    <div id="tabs-1">
+    <div id="tabs-1" class="tab">
       <div id="activePolls">
       </div>
     </div>
-    <div id="tabs-2">
+    <div id="tabs-2" class="tab">
       <div id="finishedPolls">
       </div>
     </div>
-    <div id="tabs-3">
+    <div id="tabs-3" class="tab">
       <div id="createPoll" style="width: 600px; background-color: #f7f7f7; padding: 20px;">
         <form id="formCreatePoll">
           <fieldset>
@@ -176,98 +173,6 @@
         </form>
       </div>
 
-      <script>
-
-        $("#formCreatePoll").submit(function(e){
-            return false;
-        });  
-    
-        function showMsg(msg, hideClose) {
-          $("#msgAlert").html(msg);
-          if (hideClose) {
-            $("#msgAlert").modal({escapeClose: false, clickClose: false, showClose: false});    
-          } else {
-            $("#msgAlert").modal();  
-          }
-          
-        }
-    
-        function toggleCreatePoll() {
-          $("#createPoll").toggle();
-          
-        }
-        function addChoice() {
-          if($("input[name='choice']").length == 10) {
-            alert("선택지는 최대 10개까지 허용됩니다.");
-            return;
-          }
-          $('<input type="text" placeholder="답변" name="choice" class="addedChoice pollChoice">').insertBefore("#btnAddChoice");
-        }
-    
-        function removeChoice() {
-          if ($("#pollMode").val() == 2 && $(".pollChoice").length == 3) {
-              alert("HigLow 게임모드에서는 최소한 3개의 선택지가 있어야 합니다.");
-          } else {
-            $(".addedChoice").last().remove();
-          }
-        }
-    
-        function resetCreatePoll() {
-          $("#formCreatPoll").trigger('reset')    
-          $(".addedChoice").remove();
-        }
-    
-        function checkChoiceCount() {
-          if ($("#pollMode").val() == 2){
-            if ($(".pollChoice").length < 3) {
-              addChoice();
-            }
-          }
-        }
-    
-        async function sendPoll() {
-          var question = $("#pollQuestion").val();
-          var mode = $("#pollMode").val();
-          var choices = [];
-          var start = 0;
-          var startTimeLaterHours = $("#startTimeLaterHours").val();
-          var durationHours = $("#durationHours").val();
-          var duration = durationHours*60*60;
-    
-          
-          $("input[name='choice']").each(function(index) {
-            var val = $(this).val();
-            if (val) choices.push($(this).val());
-          })
-          if ($("input[name='startTime']:checked").val() == "1") {
-            start = startTimeLaterHours*60*60;
-          }
-          var errorMsg = "";
-          if (!question) errorMsg += "<li>질문내용이 없습니다.</li>";
-          if (mode=="2" && choices.length < 3) {errorMsg += "<li>HighLow 게임모드에서는 최소한 3개 이상의 선택지 내용이 필요합니다.</li>";}
-          else if (choices.length < 2) {errorMsg += "<li>최소한 2개 이상의 선택지 내용이 필요합니다.</li>";}
-          if (startTimeLaterHours > 24) {errorMsg += "<li>시작 시간은 24시간 이내로만 설정할 수 있습니다.</li>";}
-          if (durationHours > 168) {errorMsg += "<li>오픈 기간은 최대 168시간까지만 가능합니다.</li>";}
-          if (errorMsg) {
-            showMsg("<h5>새 여론조사 작성오류:</h5>" + errorMsg);
-            return false;
-          }
-          var gas = await pollContract.methods.createPoll(start, duration, question, choices, mode).estimateGas({from: myAddr});
-          pollContract.methods.createPoll(start, duration, question, choices, mode).send({from: myAddr, gas: gas})
-          .on('transactionHash', (txid) => {
-            $("#createPollTx").html(`트랜잭션 정보 txid: ${getLink(txid)} <span id="pending-pollTx" style="color:red;"><img src="spin.gif">블록체인 컨펌 대기중...</span>`);    
-          })
-          .once('receipt', (receipt) => {
-            $('#pending-pollTx').html('<br>(기록된 블록: ' + receipt.blockNumber + ')');
-            $('#pending-pollTx').css('color', 'green');
-            updateAllbalances();        
-          })
-          .on('error', (error) => {
-            $('#pending-pollTx').html('(트랜잭션 실행 실패)');
-            $('#pending-pollTx').css('color', 'red');
-          })
-        }
-      </script>
     
     </div>
     <div id="tabs-4">
@@ -275,6 +180,9 @@
     </div>
     <div id="tabs-5">
       <h4>DKEY 지갑</h4>
+    </div>
+    <div id="tabs-6">
+          
     </div>
 
   </div>
@@ -385,7 +293,7 @@
           tokenAddr = "0x155d2A49BB97e6b2aFbD50Bba93191eC9DdE5613";
         }
         else if (chainId==42) { 
-          if (location.hostname == 'localhost') pollAddr = "0x772B04E4166623AC12F22FB2F01156bf6a783279"; //test
+          if (location.hostname == '127.0.0.1') pollAddr = "0x772B04E4166623AC12F22FB2F01156bf6a783279"; //test
           else pollAddr = "0x0b9f85A3a6700a25290FDBc0F1d048d7Ac1DA3D8"; 
           tokenAddr = "0x9dBd912c7b31E70ADc1E9808f4C818B275945423";
         }
@@ -456,6 +364,98 @@
       .on('error', (error) => {
         $('#pending').html('(트랜잭션 실행 실패!)');
         $('#pending').css('color', 'red');
+      })
+    }
+
+
+    $("#formCreatePoll").submit(function(e){
+        return false;
+    });  
+
+    function showMsg(msg, hideClose) {
+      $("#msgAlert").html(msg);
+      if (hideClose) {
+        $("#msgAlert").modal({escapeClose: false, clickClose: false, showClose: false});    
+      } else {
+        $("#msgAlert").modal();  
+      }
+      
+    }
+
+    function toggleCreatePoll() {
+      $("#createPoll").toggle();
+      
+    }
+    function addChoice() {
+      if($("input[name='choice']").length == 10) {
+        alert("선택지는 최대 10개까지 허용됩니다.");
+        return;
+      }
+      $('<input type="text" placeholder="답변" name="choice" class="addedChoice pollChoice">').insertBefore("#btnAddChoice");
+    }
+
+    function removeChoice() {
+      if ($("#pollMode").val() == 2 && $(".pollChoice").length == 3) {
+          alert("HigLow 게임모드에서는 최소한 3개의 선택지가 있어야 합니다.");
+      } else {
+        $(".addedChoice").last().remove();
+      }
+    }
+
+    function resetCreatePoll() {
+      $("#formCreatPoll").trigger('reset')    
+      $(".addedChoice").remove();
+    }
+
+    function checkChoiceCount() {
+      if ($("#pollMode").val() == 2){
+        if ($(".pollChoice").length < 3) {
+          addChoice();
+        }
+      }
+    }
+
+    async function sendPoll() {
+      var question = $("#pollQuestion").val();
+      var mode = $("#pollMode").val();
+      var choices = [];
+      var start = 0;
+      var startTimeLaterHours = $("#startTimeLaterHours").val();
+      var durationHours = $("#durationHours").val();
+      var duration = durationHours*60*60;
+
+      
+      $("input[name='choice']").each(function(index) {
+        var val = $(this).val();
+        if (val) choices.push($(this).val());
+      })
+      if ($("input[name='startTime']:checked").val() == "1") {
+        start = startTimeLaterHours*60*60;
+      }
+      var errorMsg = "";
+      if (!question) errorMsg += "<li>질문내용이 없습니다.</li>";
+      if (mode=="2" && choices.length < 3) {errorMsg += "<li>HighLow 게임모드에서는 최소한 3개 이상의 선택지 내용이 필요합니다.</li>";}
+      else if (choices.length < 2) {errorMsg += "<li>최소한 2개 이상의 선택지 내용이 필요합니다.</li>";}
+      if (startTimeLaterHours > 24) {errorMsg += "<li>시작 시간은 24시간 이내로만 설정할 수 있습니다.</li>";}
+      if (durationHours > 168) {errorMsg += "<li>오픈 기간은 최대 168시간까지만 가능합니다.</li>";}
+      if (errorMsg) {
+        showMsg("<h5>새 여론조사 작성오류:</h5>" + errorMsg);
+        return false;
+      }
+      var gas = await pollContract.methods.createPoll(start, duration, question, choices, mode).estimateGas({from: myAddr});
+      pollContract.methods.createPoll(start, duration, question, choices, mode).send({from: myAddr, gas: gas})
+      .on('transactionHash', (txid) => {
+        $("#createPollTx").html(`트랜잭션 정보 txid: ${getLink(txid)} <span id="pending-pollTx" style="color:red;"><img src="spin.gif">블록체인 컨펌 대기중...</span>`);    
+      })
+      .once('receipt', (receipt) => {
+        $('#pending-pollTx').html('<br>(기록된 블록: ' + receipt.blockNumber + ')');
+        $('#pending-pollTx').css('color', 'green');
+        updateAllbalances();
+        updateSummary();
+      })
+      .on('error', (error) => {
+        $('#pending-pollTx').html('(트랜잭션 실행 실패)');
+        $('#pending-pollTx').css('color', 'red');
       })
     }
 
@@ -583,7 +583,8 @@
     }
 
     async function pollBet(pollId){
-      const betAmount = parseInt($(`#betAmount-${pollId}`).val())
+      let input = $(`#betAmount-${pollId}`).val() || 0
+      const betAmount = parseInt(input)
       const choice = $(`input[name='choices-${pollId}']:checked`).val()
 
       var errorMsg = "";
@@ -606,7 +607,8 @@
       .once('receipt', (receipt) => {
         $(`#pending-${pollId}`).html(`<br>(기록된 블록: ${receipt.blockNumber})`);
         $(`#pending-${pollId}`).css('color', 'green');
-        updateAllbalances();        
+        updateAllbalances();
+        updateSummary()        
       })
       .on('error', (error) => {
         $(`#pending-${pollId}`).html(`<br>(트랜잭션 실행 실패)`);
@@ -647,7 +649,7 @@
 
     async function getChoiceHash(contract, pollId, address, choice) {
       let api = 'https://blindpoll.atomrigs.io/api/v1/'
-      if (location.hostname == 'localhost') api = 'http://localhost:3000/api/v1/'
+      if (location.hostname == '127.0.0.1') api = 'http://127.0.0.1:3000/api/v1/'
       const resource = 'getHash'
       data = { contract, pollId, address, choice}
       res = await apiPost(api, resource, data)
@@ -668,6 +670,7 @@
         const pollBetAmount = parseInt($(`#pollBetAmount-${pollId}`).html()) + parseInt(r.returnValues.amount);
         $(`#pollBetCount-${pollId}`).html(pollBetCount).valAnimate();
         $(`#pollBetAmount-${pollId}`).html(pollBetAmount).valAnimate();
+        await updateSummary();
       })
       .on("error", function(error, receipt){console.log(error);});
     }
