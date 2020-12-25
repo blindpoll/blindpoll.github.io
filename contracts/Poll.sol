@@ -1,6 +1,6 @@
 // @title HighLow Poll Game
 // @author Atomrigs Lab
-// @version 1.0.3
+// @version 1.0.4
 // SPDX-License-Identifier: MIT
 
 pragma solidity >=0.7.0 <0.8.0;
@@ -91,7 +91,8 @@ contract BlindPollBet {
         bool isPaid;
         bool isTerminated;
         uint16 betCount;    
-        uint32 totalAmount;    
+        uint32 totalAmount;
+        uint32 bonusAmount;
         bytes32 secretSalt;
     }
     
@@ -199,6 +200,7 @@ contract BlindPollBet {
             isTerminated: false,
             betCount: 0,
             totalAmount: 0,
+            bonusAmount: 0,
             secretSalt: "0x0"
         });
         polls.push(poll);
@@ -277,6 +279,9 @@ contract BlindPollBet {
         bets[_pollId].push(bet);
         pollDetail.betCount ++;
         pollDetail.totalAmount = uint32(pollDetail.totalAmount.add(_betAmount));
+        if (_choiceHash == 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef) {
+            pollDetail.bonusAmount = uint32(pollDetail.bonusAmount.add(_betAmount));
+        }
         gameInfo.totalBetCount ++;
         gameInfo.totalBetAmount += _betAmount;
         

@@ -20,10 +20,10 @@ app.get('/', (req, res) => {
 app.post('/api/v1/getHash', async (req, res, next) => {
   try {
     const { contract, pollId, choice, address } = req.body
-    assert (contract.length == 42, 'The length of contract address should be 42.')
-    assert (parseInt(pollId) >= 0 && parseInt(pollId) < 10000, 'The pollId should be less than 10000.')
-    assert (parseInt(choice) >= 1 && parseInt(choice) < 11, 'The number of choices should be less than 11.')
-    assert (address.length == 42, 'The address length should be 42.')
+    assert(contract.length == 42, 'The length of contract address should be 42.')
+    assert(parseInt(pollId) >= 0 && parseInt(pollId) < 10000, 'The pollId should be less than 10000.')
+    assert(parseInt(choice) >= 1 && parseInt(choice) < 11, 'The number of choices should be less than 11.')
+    assert(address.length == 42, 'The address length should be 42.')
     const dbKey = `saltHash-${pollId}`
     let pollSalt 
 
