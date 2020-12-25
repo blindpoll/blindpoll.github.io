@@ -1,6 +1,6 @@
 // @title HighLow Poll Game
 // @author Atomrigs Lab
-// @version 1.0.2
+// @version 1.0.3
 // SPDX-License-Identifier: MIT
 
 pragma solidity >=0.7.0 <0.8.0;
@@ -222,20 +222,19 @@ contract BlindPollBet {
     function getStatus(uint256 _pollId) public view returns (Status) {
         Poll memory poll = polls[_pollId];
         PollDetail memory pollDetail = pollDetails[_pollId];
+        if (pollDetail.isPaid) {
+            if (pollDetail.isTerminated) {
+                return Status.terminated;   
+            } else {
+                return Status.paid;
+            }
+        }
         if (uint32(block.timestamp) < poll.startTime) {
             return Status.pending;
         } else if (uint32(block.timestamp) < poll.startTime.add(poll.duration)) {
             return Status.active;
         } else {
-            if (pollDetail.isPaid) {
-                if (pollDetail.isTerminated) {
-                    return Status.terminated;   
-                } else {
-                    return Status.paid;
-                }
-            } else {
-                return Status.finished;
-            }
+            return Status.finished;
         }
     }
     
