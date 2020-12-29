@@ -925,12 +925,18 @@
 
     function checkImgUrl() {
       $(".pollChoiceUrl").each(function(i, ele) {
+
         var img = $('<img />').attr({
             'class': 'urlImg',
             'src': $(ele).val(),
             'width': 50
-        }).appendTo($(ele).parent());
-      })  
+        })
+        var parent = $(ele).parent();
+        if (parent.has('img').length > 0) {
+          parent.children('img').remove();
+        } 
+        parent.append(img);
+      });
     }
 
     class inputDecoder {
