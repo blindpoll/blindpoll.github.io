@@ -5,10 +5,16 @@ const ethers = require('ethers')
 const assert = require('assert')
 const cron = require('node-cron');
 const srcDir = require('find-config')('src')
-const db = require(srcDir + '/db')
 const cronJob = require(srcDir + '/cron')
 const port = 3000
 const bodyParser = require('body-parser');
+const storage = require('find-config')('storage')
+const fs = require('fs');
+if (!fs.existsSync(storage)){
+    fs.mkdirSync('./storage');
+}
+const db = require(srcDir + '/db')
+
 app.use(bodyParser.json()); 
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -24,7 +30,7 @@ app.post('/api/v1/getHash', async (req, res, next) => {
     assert(parseInt(pollId) >= 0 && parseInt(pollId) < 10000, 'The pollId should be less than 10000.')
     assert(parseInt(choice) >= 1 && parseInt(choice) < 11, 'The number of choices should be less than 11.')
     assert(address.length == 42, 'The address length should be 42.')
-    const dbKey = `saltHash-${pollId}`
+    const dbKey = `saltHash-${contract}-${pollId}`
     let pollSalt 
 
     pollSalt = db.get(dbKey)

@@ -1,6 +1,6 @@
 // @title HighLow Poll Game
 // @author Atomrigs Lab
-// @version 1.0.4
+// @version 1.0.8
 // SPDX-License-Identifier: MIT
 
 pragma solidity >=0.7.0 <0.8.0;
@@ -84,20 +84,21 @@ contract BlindPollBet {
         address creator;
         uint32 startTime;
         uint32 duration;
-        string question;
     }
     
     struct PollDetail {
         bool isPaid;
         bool isTerminated;
-        uint16 betCount;    
+        uint32 betCount;    
         uint32 totalAmount;
         uint32 bonusAmount;
+        uint32 operatorAmount;
+        uint32 creatorAmount;
         bytes32 secretSalt;
     }
     
     struct GameInfo {
-        uint16 totalPollCount;
+        uint32 totalPollCount;
         uint32 totalBetCount;
         uint32 totalBetAmount;
     }
@@ -106,7 +107,7 @@ contract BlindPollBet {
         uint8 operatorCommission; // 5% 
         uint8 creatorCommission; 
         uint8 maxChoiceCount;
-        uint16 maxBetCount;
+        uint32 maxBetCount;
         uint32 minBetAmount;
         uint32 maxBetAmount; 
     }
@@ -115,7 +116,7 @@ contract BlindPollBet {
         uint256 totalProfit;
         uint256 operatorAmount;
         uint256 creatorAmount;
-        uint256 totalWinAmount;
+        uint256 totalProfitShare;
         uint256 totalPaidAmount;
     }
     enum Status { pending, active, finished, paid, terminated }
@@ -125,24 +126,27 @@ contract BlindPollBet {
     GameInfo public gameInfo;
     GameRule public gameRule;
 
-    mapping(uint256 => string[]) public pollChoices;
-    mapping(uint256 => Bet[]) public bets;
-    mapping(uint256 => mapping(uint8 => uint32)) public pollResults; //pollId => choice => totalTokens
-    mapping(uint256 => mapping(uint8 => bool)) public winningChoices; //pollId => choice => bool
-
-    string public name = "HighLow Poll Bet Game";
-    uint256 public deployedBlock;
+    //mapping(uint256 => string[]) public pollChoices;
+    mapping(uint32 => Bet[]) public bets;
+    mapping(uint32 => mapping(uint8 => uint32)) public pollResults; //pollId => choice => totalTokens
+    mapping(uint32 => mapping(uint8 => uint8)) public winningChoices; //pollId => choice => winning Status
+    // 0 => lost 1 => low win 2=> high win
+    mapping(uint32 => uint32) public blockByCounter;    
+    
+    
+    uint32 public deployedBlock;
     address operator;
     uint256 decimal = 10**18;
     bool newPollAllow = true;
+    
 
     address public tokenAddress; // ERC20 contract
 
-    event PollCreated(uint256 pollId, address indexed creator, uint32 startTime, uint32 duration, uint8 mode);
-    event BetCreated(uint256 indexed pollId, address indexed bettor, uint256 index, uint256 amount, uint32 totalBetCount, uint32 totalBetAmount);
-    event PollPaid(uint256 indexed pollId, address indexed bettor, uint256 amount, uint8 payType);
+    event PollCreated(uint32 indexed pollId, address indexed creator, uint32 startTime, uint32 duration, uint8 mode, string question);
+    event BetCreated(uint32 indexed pollId, address indexed bettor, uint256 index, uint256 amount, uint32 totalBetCount, uint32 totalBetAmount);
+    event PollPaid(uint32 indexed pollId, address indexed bettor, uint256 amount, uint8 payType);
     //paytype 0 => refund, 1 => win_reward, 2 => creator_commision, 3=> operator_commision
-    event PollRevealed(uint256 indexed pollId);
+    event PollRevealed(uint32 indexed pollId);
     
     modifier onlyOperator() {
         require(msg.sender == operator);
@@ -150,7 +154,7 @@ contract BlindPollBet {
     }    
     
     constructor() {
-        deployedBlock = block.number;
+        deployedBlock = uint32(block.number);
         operator = msg.sender;
         tokenAddress = 0x9dBd912c7b31E70ADc1E9808f4C818B275945423;
     
@@ -174,6 +178,7 @@ contract BlindPollBet {
                         uint32 _duration,
                         string memory _question,
                         string[] memory _choices,
+                        string[] memory _choiceUrls,
                         uint8 _mode
                         ) public returns (uint256 pollId) {
         require(newPollAllow, "The game does not accept new polls at the moment.");
@@ -191,8 +196,7 @@ contract BlindPollBet {
             mode: _mode,
             creator: msg.sender,
             startTime: _startTime,
-            duration: _duration,
-            question: _question
+            duration: _duration
         });
 
         PollDetail memory pollDetail = PollDetail({
@@ -201,27 +205,26 @@ contract BlindPollBet {
             betCount: 0,
             totalAmount: 0,
             bonusAmount: 0,
+            operatorAmount: 0,
+            creatorAmount: 0,
             secretSalt: "0x0"
         });
         polls.push(poll);
         pollDetails.push(pollDetail);
         require(polls.length == pollDetails.length);
-        pollId = polls.length-1;
+        pollId = polls.length - 1;
 
-        for (uint i = 0; i < _choices.length; i++) { 
-            pollChoices[pollId].push(_choices[i]); 
-        }
-        
         gameInfo.totalPollCount ++;
-        emit PollCreated(pollId, msg.sender, _startTime, _duration, _mode);
+        blockByCounter[gameInfo.totalPollCount] = uint32(block.number);
+        emit PollCreated(uint32(pollId), msg.sender, _startTime, _duration, _mode, _question);
         return pollId;
     }
     
-    function getPollChoices(uint _pollId) external view returns (string[] memory) {
-        return pollChoices[_pollId];
+    function getBets(uint32 _pollId) external view returns (Bet[] memory) {
+        return bets[_pollId];
     }
-    
-    function getStatus(uint256 _pollId) public view returns (Status) {
+
+    function getStatus(uint32 _pollId) public view returns (Status) {
         Poll memory poll = polls[_pollId];
         PollDetail memory pollDetail = pollDetails[_pollId];
         if (pollDetail.isPaid) {
@@ -240,23 +243,24 @@ contract BlindPollBet {
         }
     }
     
-    function isFinished(uint256 _pollId) public view returns (bool) { 
+    function isFinished(uint32 _pollId) public view returns (bool) { 
         return getStatus(_pollId) >= Status.finished; 
     }    
     
-    function isActive(uint256 _pollId) public view returns (bool) { 
+    function isActive(uint32 _pollId) public view returns (bool) { 
         return getStatus(_pollId) == Status.active; 
     }
     
-    function isPaid(uint256 _pollId) public view returns (bool) { 
+    function isPaid(uint32 _pollId) public view returns (bool) { 
         return getStatus(_pollId) >= Status.paid; 
     }
     
-    function getPollCount() public view returns (uint256) {
-        return polls.length;
+    function getPollCount() public view returns (uint32) {
+        return uint32(polls.length);
     }
     
-    function pollBet(uint256 _pollId, bytes32 _choiceHash, uint32 _betAmount ) public {
+
+    function pollBet(uint32 _pollId, bytes32 _choiceHash, uint32 _betAmount ) public {
         Poll memory poll = polls[_pollId];
         PollDetail storage pollDetail = pollDetails[_pollId];
         require(poll.creator != address(0));
@@ -283,17 +287,17 @@ contract BlindPollBet {
             pollDetail.bonusAmount = uint32(pollDetail.bonusAmount.add(_betAmount));
         }
         gameInfo.totalBetCount ++;
-        gameInfo.totalBetAmount += _betAmount;
-        
+        gameInfo.totalBetAmount = uint32(gameInfo.totalBetAmount.add(_betAmount));
         emit BetCreated(_pollId, msg.sender, bets[_pollId].length-1, _betAmount, gameInfo.totalBetCount, gameInfo.totalBetAmount);
     }
+    
     
     function getHash(uint8 _choice, address _addr, bytes32 _secreteSalt) 
         public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_choice, _addr, _secreteSalt));
     }
     
-    function _revealChoices(uint256 _pollId, uint8 _choiceCount, bytes32 _secreteSalt) private returns (bool) {
+    function _revealChoices(uint32 _pollId, uint8 _choiceCount, bytes32 _secreteSalt) private returns (bool) {
         Bet[] storage targetBets = bets[_pollId];
 
         for (uint i = 0; i < targetBets.length; i++) { 
@@ -309,7 +313,7 @@ contract BlindPollBet {
         return true;
     }
     
-    function _decideWinningChoice(uint256 _pollId, uint8 _mode, uint8 _choiceCount) private returns (bool) {
+    function _decideWinningChoice(uint32 _pollId, uint8 _mode, uint8 _choiceCount) private returns (bool) {
         
         if (_mode == 0) { //low game
             uint lowest = 0;
@@ -326,7 +330,7 @@ contract BlindPollBet {
             
             for (uint8 j = 1; j < _choiceCount + 1; j++) {
                 if (pollResults[_pollId][j] == lowest) { 
-                    winningChoices[_pollId][j] = true; 
+                    winningChoices[_pollId][j] = 1; 
                 }
             }
         } else if (_mode == 1) { //high game
@@ -340,7 +344,7 @@ contract BlindPollBet {
             
             for (uint8 j = 1; j < _choiceCount + 1; j++) {
                 if (pollResults[_pollId][j] == highest) { 
-                    winningChoices[_pollId][j] = true; 
+                    winningChoices[_pollId][j] = 2; 
                 }
             }
         } else { // highlow game
@@ -362,27 +366,34 @@ contract BlindPollBet {
             
             for (uint8 j = 1; j < _choiceCount + 1; j++) {
                 uint amount = pollResults[_pollId][j];
-                if (amount == lowest || amount == highest) { 
-                    winningChoices[_pollId][j] = true; 
+                if (amount == highest) {
+                    winningChoices[_pollId][j] = 2; 
+                }
+                else if(amount == lowest) { 
+                    winningChoices[_pollId][j] = 1; 
                 }
             }
         }
         return true;
     }
     
-    function _calcTotalWinChoiceAmount(uint256 _pollId, uint8 _choiceCount) private view returns (uint256) {
+    function _calcTotalWinChoiceAmount(uint32 _pollId, uint8 _choiceCount) private view returns (uint256, uint256) {
         
         uint256 totalWinChoiceAmount = 0;
-        
+        uint256 lowWinAmount = 0;
+
         for (uint8 i = 1; i < _choiceCount + 1; i++) {
-            if (winningChoices[_pollId][i] == true) {
+            if (winningChoices[_pollId][i] > 0) {
                 totalWinChoiceAmount = totalWinChoiceAmount.add(pollResults[_pollId][i]);
             }
+            if (winningChoices[_pollId][i] == 1) {
+                lowWinAmount = lowWinAmount.add(pollResults[_pollId][i]);
+            }
         }
-        return totalWinChoiceAmount;
+        return (totalWinChoiceAmount, lowWinAmount);
     }
-    
-    function payPoll(uint256 _pollId, bytes32 _secreteSalt) public onlyOperator() returns (bool) {
+
+    function payPoll(uint32 _pollId, bytes32 _secreteSalt) public onlyOperator() returns (bool) {
         Poll memory poll = polls[_pollId];
         PollDetail storage pollDetail = pollDetails[_pollId];
         require(isFinished(_pollId), "The poll is not finished yet.");
@@ -393,38 +404,50 @@ contract BlindPollBet {
         }
         require(_revealChoices(_pollId, poll.choiceCount, _secreteSalt), "Revealing choices failed.");
         require(_decideWinningChoice(_pollId, poll.mode, poll.choiceCount), "Deciding winning choices failed.");
-        uint256 totalWinChoiceAmount = _calcTotalWinChoiceAmount(_pollId, poll.choiceCount);
+        (uint256 totalWinChoiceAmount, uint256 lowWinAmount) = _calcTotalWinChoiceAmount(_pollId, poll.choiceCount);
 
         if (totalWinChoiceAmount == 0) { //refund
             require(terminatePoll(_pollId));
             return true;
         }
-
+        
         Calc memory c = Calc({
             totalProfit: 0,
             operatorAmount: 0,
             creatorAmount: 0,
-            totalWinAmount: 0,
+            totalProfitShare: 0,
             totalPaidAmount: 0
         });
         c.totalProfit = pollDetail.totalAmount.sub(totalWinChoiceAmount);
         c.operatorAmount = (c.totalProfit.mul(gameRule.operatorCommission)).div(100);
         c.creatorAmount = (c.totalProfit.mul(gameRule.creatorCommission)).div(100);
-        c.totalWinAmount = pollDetail.totalAmount.sub(c.operatorAmount.add(c.creatorAmount));
+        c.totalProfitShare = c.totalProfit.sub(c.operatorAmount.add(c.creatorAmount));
         c.totalPaidAmount = 0;
-        
+
         IERC20 token = IERC20(tokenAddress);
         Bet[] storage targetBets = bets[_pollId];
+        
         for (uint i = 0; i < targetBets.length; i++) { 
             Bet storage bet = targetBets[i];
-            if (winningChoices[_pollId][bet.choiceDecoded]) {
-                uint256 paidAmount = (c.totalWinAmount.mul(bet.betAmount)).div(totalWinChoiceAmount);
+            uint8 winType = winningChoices[_pollId][bet.choiceDecoded];
+            uint256 paidAmount;
+            if (winType > 0) {
+                if (lowWinAmount == 0 || totalWinChoiceAmount == lowWinAmount) { // high or low win
+                    paidAmount = bet.betAmount.add((c.totalProfitShare.mul(bet.betAmount)).div(totalWinChoiceAmount));
+                } else {
+                    if (winType == 1) {
+                        paidAmount = bet.betAmount.add(((c.totalProfitShare.div(2)).mul(bet.betAmount)).div(lowWinAmount));
+                    } else {
+                        paidAmount = bet.betAmount.add(((c.totalProfitShare.div(2)).mul(bet.betAmount)).div(totalWinChoiceAmount.sub(lowWinAmount)));
+                    }
+                }
                 require(token.transfer(bet.bettor, decimal.mul(paidAmount)));
                 bet.paidAmount = uint32(paidAmount);
                 c.totalPaidAmount = c.totalPaidAmount.add(paidAmount);
                 emit PollPaid(_pollId, bet.bettor, paidAmount, 1);
             }
         }
+
         if (c.creatorAmount > 0) {
             require(token.transfer(poll.creator, decimal.mul(c.creatorAmount)));    
             emit PollPaid(_pollId, poll.creator, c.creatorAmount, 2);
@@ -437,11 +460,39 @@ contract BlindPollBet {
                 
         }
         pollDetail.isPaid = true;
+        pollDetail.operatorAmount = uint32(c.operatorAmount);
+        pollDetail.creatorAmount = uint32(c.creatorAmount);
         emit PollRevealed(_pollId);
         return true;
     }
+
+    function getPollResult(uint32 _pollId) external view returns (uint32[] memory) {
+        Poll memory poll = polls[_pollId];
+        uint32[] memory resultList = new uint32[](poll.choiceCount+1);
+        for (uint8 i = 0; i < poll.choiceCount+1; i++) { 
+            if (pollResults[_pollId][i] > 0) {
+                resultList[i] = pollResults[_pollId][i];
+            } else {
+                resultList[i] = 0;
+            }
+        }
+        return resultList;
+    }
     
-    function terminatePoll(uint256 _pollId) public onlyOperator() returns(bool) {
+    function getWiningChoices(uint32 _pollId) external view returns (uint8[] memory) {
+        Poll memory poll = polls[_pollId];
+        uint8[] memory resultList = new uint8[](poll.choiceCount+1);
+        for (uint8 i = 0; i < poll.choiceCount+1; i++) { 
+            if (winningChoices[_pollId][i] > 0) {
+                resultList[i] = winningChoices[_pollId][i];
+            } else {
+                resultList[i] = 0;
+            }
+        }
+        return resultList;
+    }    
+
+    function terminatePoll(uint32 _pollId) public onlyOperator() returns(bool) {
         PollDetail storage pollDetail = pollDetails[_pollId];
         require(!pollDetail.isPaid);
         
@@ -460,7 +511,7 @@ contract BlindPollBet {
     }
 
     function updateToken(address _tokenAddr) public onlyOperator() returns (bool) {
-        for(uint i = 0; i < polls.length; i++) {
+        for(uint32 i = 0; i < polls.length; i++) {
             require(isPaid(i));
         }
         tokenAddress = _tokenAddr;
@@ -473,7 +524,7 @@ contract BlindPollBet {
     }
 
     function withdrawTo(address _toAddr, uint256 _amount) public onlyOperator() returns (bool) {
-        for(uint i = 0; i < polls.length; i++) {
+        for(uint32 i = 0; i < polls.length; i++) {
             require(isPaid(i));
         }
         IERC20 token = IERC20(tokenAddress);        
