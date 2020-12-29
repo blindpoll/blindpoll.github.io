@@ -146,8 +146,8 @@
           <fieldset>
             <label for="pollMode">게임 방식</label>
             <select id="pollMode" onchange="checkChoiceCount()">
-              <option value="0">High - 가장 많은 베팅액을 받은 선택지가 이김</option>
-              <option value="1">Low - 가장 적은 베팅액을 받은 선택지가 이김</option>
+              <option value="0">Low - 가장 적은 베팅액을 받은 선택지가 이김</option>
+              <option value="1">High - 가장 많은 베팅액을 받은 선택지가 이김</option>
               <option value="2">HighLow - 가장 많거나 가장 적은 베팅액을 받은 선택지가 이김 </option>
             </select>
     
@@ -201,7 +201,7 @@
   </script>
   <div id="footer">
   <p></p>
-  <p style="text-align: center;">by Atomrigs © 2020 </p>
+  <p style="text-align: center;">by Atomrigs Lab © 2020-2021 </p>
   </div>
 
 
@@ -587,8 +587,8 @@
       var betDiv = $(`<div class="pollBet"></div>`);
 
       var pollMode;
-      if (poll.mode == 0) { pollMode = "High"; }
-      else if (poll.mode == 1) { pollMode = "Low"; }
+      if (poll.mode == 0) { pollMode = "Low"; }
+      else if (poll.mode == 1) { pollMode = "High"; }
       else { pollMode = "HighLow"; }
       var endTime = parseInt(poll.startTime) + parseInt(poll.duration);
       headDiv.append($(`<span class="pollId"><span class="pollKey">설문번호: </span><span>${pollId}</span></span>`));
@@ -759,12 +759,12 @@
       var pollMode;
       var winType;
       if (poll.mode == 0) { 
-        pollMode = 'High'; 
-        winType = ['', 'High', 'High']
-      }
-      else if (poll.mode == 1) { 
         pollMode = 'Low'; 
         winType = ['', 'Low', 'Low']
+      }
+      else if (poll.mode == 1) { 
+        pollMode = 'High'; 
+        winType = ['', 'High', 'High']
       }
       else { 
         pollMode = 'HighLow'; 
@@ -831,12 +831,12 @@
       var pollBets = await pollContract.methods.getBets(pollId).call();
       var winType;
       if (poll.mode == 0) { 
-        pollMode = 'High'; 
-        winType = ['', 'High', 'High']
+        pollMode = 'Low'; 
+        winType = ['', 'Low', 'Low']
       }
       else if (poll.mode == 1) { 
         pollMode = 'Low'; 
-        winType = ['', 'Low', 'Low']
+        winType = ['', 'High', 'High']
       }
       else { 
         pollMode = 'HighLow'; 
